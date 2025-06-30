@@ -1,8 +1,8 @@
-.MOV
-.mp4
-.jpg
-.txt
-.JPG
-.png
-.PNG
-.pyc
+*.MOV
+*.mp4
+*.jpg
+*.txt
+*.JPG
+*.png
+*.PNG
+*.pyc
