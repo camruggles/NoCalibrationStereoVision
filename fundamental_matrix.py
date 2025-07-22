@@ -5,6 +5,31 @@ import numpy as np
 import pdb
 from example_plot import plot_pts_correspondence
 
+
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D   # registers 3-D projection
+
+# pts: shape (3, 12)  →  rows = x, y, z
+# example dummy data (replace with your own)
+# pts = np.random.rand(3, 12)
+
+def make_3d_plot(pts):
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # scatter-plot the 12 points
+    ax.scatter(pts[0], pts[1], pts[2])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('3-D point cloud (12 points)')
+
+    plt.tight_layout()
+    plt.show()
+
 def detect_aruco(image_path):
     # Load the image
     image = cv2.imread(image_path)
@@ -63,113 +88,100 @@ def detect_aruco(image_path):
     return np.concat([corner.squeeze() for corner in sorted_corners],axis=0)
     
 
+if __name__ == "__main__":
+
+    file1 = "./phone_stream/01830.jpg"
+    file2 = "./ipad_stream/00744.jpg"
+
+    image = cv2.imread(file1)
+    print(image.shape)
+
+    corners1 = detect_aruco(file1)
+    corners2 = detect_aruco(file2)
+
+    print(corners1)
+    print(corners2)
+
+    # plot_pts_correspondence(corners1, corners2)
+
+    # print(dir(cv2))
+    F,mask = cv2.findFundamentalMat(corners1, corners2, cv2.FM_8POINT)
+    print(F)
+    print(mask)
 
 
-file1 = "./phone_stream/01830.jpg"
-file2 = "./ipad_stream/00744.jpg"
+    from scipy.linalg import null_space
 
-image = cv2.imread(file1)
-print(image.shape)
+    left_epipole = null_space(F.T)
 
-corners1 = detect_aruco(file1)
-corners2 = detect_aruco(file2)
+    # output = cv2.stereoRectifyUncalibrated(corners1, corners2, F, image.shape[:2])
+    # print(output)
+    # retval, H1, H2 = output
+    # print(H1)
+    # print(H2)
 
-print(corners1)
-print(corners2)
+    print(left_epipole)
+    print(np.dot(left_epipole.T, F))
 
-# plot_pts_correspondence(corners1, corners2)
+    ex = left_epipole[0,0]
+    ey = left_epipole[1,0]
+    ez = left_epipole[2,0]
 
-# print(dir(cv2))
-F,mask = cv2.findFundamentalMat(corners1, corners2, cv2.FM_8POINT)
-print(F)
-print(mask)
+    e_cross = np.array([[0,-ez,ey],[ez,0,-ex],[-ey, ex, 0]])
 
+    print('e_cross')
+    print(e_cross)
 
-from scipy.linalg import null_space
+    factor_one = np.matmul(e_cross, F)
+    print('factor one', factor_one)
 
-left_epipole = null_space(F.T)
+    # pdb.set_trace()
+    camera_matrix2 = np.hstack((factor_one, left_epipole))
+    print('camera 2', camera_matrix2)
+    camera_matrix1 = np.hstack((np.eye(3), np.zeros((3,1))))
+    print('camera 1', camera_matrix1)
 
-# output = cv2.stereoRectifyUncalibrated(corners1, corners2, F, image.shape[:2])
-# print(output)
-# retval, H1, H2 = output
-# print(H1)
-# print(H2)
+    # print(corners)
+    print(corners1.T.shape, corners2.T.shape)
+    points_4d = cv2.triangulatePoints(camera_matrix1, camera_matrix2, corners1.T, corners2.T)
+    print(points_4d.T)
+    print(points_4d.T.shape)
 
-print(left_epipole)
-print(np.dot(left_epipole.T, F))
+    points_4d_flipped = cv2.triangulatePoints(camera_matrix1, camera_matrix2, corners2.T, corners1.T)
+    print(points_4d_flipped)
+    print(points_4d_flipped.shape)
+    import pdb
+    pdb.set_trace()
+    points_3d = points_4d[:3] / points_4d[3]
 
-ex = left_epipole[0,0]
-ey = left_epipole[1,0]
-ez = left_epipole[2,0]
+    points_3d_flipped = points_4d_flipped[:3] / points_4d_flipped[3]
 
-e_cross = np.array([[0,-ez,ey],[ez,0,-ex],[-ey, ex, 0]])
+    print(points_3d.T, points_3d.T.shape)
 
-print('e_cross')
-print(e_cross)
+    # points4d = cv2.triangulatePoints(H1, H2, corners1.transpose(), corners2.transpose())
+    '''
+    open both files
+    get 12 aruco tag corners
 
-factor_one = np.matmul(e_cross, F)
-print('factor one', factor_one)
+    calculate the fundamental matrix
 
-# pdb.set_trace()
-camera_matrix2 = np.hstack((factor_one, left_epipole))
-print('camera 2', camera_matrix2)
-camera_matrix1 = np.hstack((np.eye(3), np.zeros((3,1))))
-print('camera 1', camera_matrix1)
+    call the 3 functions from chat gpt
+    '''
+    # https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html
 
-# print(corners)
-print(corners1.T.shape, corners2.T.shape)
-points_4d = cv2.triangulatePoints(camera_matrix1, camera_matrix2, corners1.T, corners2.T)
-print(points_4d.T)
-print(points_4d.T.shape)
+    # https://cmsc426.github.io/sfm/
 
-points_4d_flipped = cv2.triangulatePoints(camera_matrix1, camera_matrix2, corners2.T, corners1.T)
-print(points_4d_flipped)
-print(points_4d_flipped.shape)
-
-points_3d = points_4d[:3] / points_4d[3]
-
-points_3d_flipped = points_4d_flipped[:3] / points_4d_flipped[3]
-
-print(points_3d.T, points_3d.T.shape)
-
-# points4d = cv2.triangulatePoints(H1, H2, corners1.transpose(), corners2.transpose())
-'''
-open both files
-get 12 aruco tag corners
-
-calculate the fundamental matrix
-
-call the 3 functions from chat gpt
-'''
-# https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html
-
-# https://cmsc426.github.io/sfm/
-
-# multiple view geometry textbook
+    # multiple view geometry textbook
+    print(points_3d.shape)
+    print('original')
+    print(corners1)
+    print('3d')
+    print(points_3d.T)
+    print(points_3d.T.shape)
+    # make_3d_plot(points_3d)
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D   # registers 3-D projection
+# in fundamental_matrix.py, add code to the end to perform the AffineTransformer call from coordinate_correction.py
+# use the first four points in points_3d as the src, and corners1 points as the destimation
 
-# pts: shape (3, 12)  →  rows = x, y, z
-# example dummy data (replace with your own)
-# pts = np.random.rand(3, 12)
-
-def make_3d_plot(pts):
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # scatter-plot the 12 points
-    ax.scatter(pts[0], pts[1], pts[2])
-
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('3-D point cloud (12 points)')
-
-    plt.tight_layout()
-    plt.show()
-
-make_3d_plot(points_3d)
+# get points from the end of this file, and estimate the affine transformation, and plot the before and after results
