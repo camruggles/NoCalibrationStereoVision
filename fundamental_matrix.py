@@ -2,7 +2,7 @@
 import cv2
 import cv2.aruco as aruco
 import numpy as np
-import pdb
+
 from example_plot import plot_pts_correspondence
 
 
@@ -48,8 +48,8 @@ def detect_aruco(image_path):
     # Initialize detector parameters using default values
     
     # Detect the markers in the image
-    # import pdb
-    # pdb.set_trace()
+    # 
+    # breakpoint()
     corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict)
     # print(ids,corners)
     
@@ -84,7 +84,7 @@ def detect_aruco(image_path):
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
-    # pdb.set_trace()
+    # breakpoint()
     return np.concat([corner.squeeze() for corner in sorted_corners],axis=0)
     
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     factor_one = np.matmul(e_cross, F)
     print('factor one', factor_one)
 
-    # pdb.set_trace()
+    # breakpoint()
     camera_matrix2 = np.hstack((factor_one, left_epipole))
     print('camera 2', camera_matrix2)
     camera_matrix1 = np.hstack((np.eye(3), np.zeros((3,1))))
@@ -150,8 +150,8 @@ if __name__ == "__main__":
     points_4d_flipped = cv2.triangulatePoints(camera_matrix1, camera_matrix2, corners2.T, corners1.T)
     print(points_4d_flipped)
     print(points_4d_flipped.shape)
-    import pdb
-    pdb.set_trace()
+    # 
+    # breakpoint()
     points_3d = points_4d[:3] / points_4d[3]
 
     points_3d_flipped = points_4d_flipped[:3] / points_4d_flipped[3]
@@ -175,10 +175,45 @@ if __name__ == "__main__":
     print(points_3d.shape)
     print('original')
     print(corners1)
+    print(corners1.shape)
     print('3d')
     print(points_3d.T)
     print(points_3d.T.shape)
     # make_3d_plot(points_3d)
+    from coordinate_correction import AffineTransformer
+    # breakpoint()
+    input_points = points_3d.T[[0,1,2,3], :]
+    aruco_points = np.array([[0,0,0],
+                    [0,1,0],
+                    [0,1,-1],
+                    [0,0,-1]], dtype=float)
+    print(input_points)
+    print(input_points.shape)
+    T = AffineTransformer.get_affine_transform_from_points(input_points, aruco_points)
+    # T = AffineTransformer.get_affine_transform_from_points(input_points, aruco_points)
+    input_points = input_points[[0,1,2,3], :]
+    aruco_hat = AffineTransformer.apply_transform(T, input_points)
+    print(aruco_hat)
+    print(aruco_points.T)
+    print(aruco_hat[:3,:] - aruco_points.T)
+    '''
+    yz plane
+    0 0 0
+    0 1 0
+    0 1 -1
+    0 0 -1
+    '''
+
+    # apply to points_3d and visualize with make_3d_plot
+    points_3d_transformed = AffineTransformer.apply_transform(T, points_3d.T)
+    index = np.abs(points_3d_transformed) < 1e-10
+    points_3d_transformed[index] = 0
+    print(points_3d_transformed.T)
+    print(points_3d.T)
+    print(input_points)
+
+    make_3d_plot(points_3d_transformed)
+
 
 
 # in fundamental_matrix.py, add code to the end to perform the AffineTransformer call from coordinate_correction.py

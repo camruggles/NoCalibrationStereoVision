@@ -85,7 +85,7 @@ def plot_correspondences_on_images(pts1: np.ndarray, pts2: np.ndarray,
 # Example:
 # pts1 = np.array([[50, 60], [120, 90], [200, 150]])
 # pts2 = pts1 + np.array([10, -5])
-corner_indices = [0,1,3,8]
+corner_indices = [0,1,2,3,8,10]
 print()
 print(corners1[corner_indices, :], corners2[corner_indices, :])
 # quit()
